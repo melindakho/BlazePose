@@ -4,6 +4,8 @@ import argparse
 from tqdm import tqdm
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import mediapipe as mp
 
 LEFT_LANDMARKS = [
@@ -25,11 +27,13 @@ def estimate_poses(args):
     video_extensions = [".mp4", ".avi", ".mov", ".mkv"]
     for ext in video_extensions:
         video_paths.extend(sorted(list(input_dir.glob(f"*{ext}"))))
-    
+
     os.makedirs(args.output, exist_ok=True)
     for video_path in tqdm(video_paths):
         filename = os.path.basename(video_path)
+        video_name, _ = os.path.splitext(filename)
         out_path = os.path.join(args.output, filename)
+        csv_path = os.path.join(args.output, f"{video_name}_poses.csv")
 
         cap = cv2.VideoCapture(video_path)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -42,6 +46,7 @@ def estimate_poses(args):
             print(f"Error opening video file {video_path}")
             return
 
+        poses, timestamps = [], []
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
@@ -50,8 +55,11 @@ def estimate_poses(args):
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = mp_pose.process(rgb)
 
+
             if results.pose_landmarks:
+                landmarks = []
                 for i, point in enumerate(results.pose_landmarks.landmark):
+                    landmarks.extend([point.x, point.y, point.z, point.visibility])
                     x = int(point.x * frame.shape[1])
                     y = int(point.y * frame.shape[0])
                     if i in LEFT_LANDMARKS:
@@ -60,6 +68,12 @@ def estimate_poses(args):
                         cv2.circle(frame, (x, y), 3, (255, 0, 0), -1)
                     else:
                         cv2.circle(frame, (x, y), 3, (0, 255, 0), -1)
+                
+                # Timestamp in seconds
+                timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+                
+                poses.append(landmarks)
+                timestamps.append(timestamp)
 
             out.write(frame)
             if args.render:
@@ -71,6 +85,16 @@ def estimate_poses(args):
         out.release()
         cv2.destroyAllWindows()
         print(f"Processed video saved to {out_path}")
+    
+        if poses:
+            n_landmarks = len(poses[0]) // 4
+            columns = []
+            for i in range(n_landmarks):
+                columns.extend([f"x_{i}", f"y_{i}", f"z_{i}", f"visibility_{i}"])
+            df = pd.DataFrame(poses, columns=columns, index=timestamps)
+            df.index.name = "timestamp"
+            df.to_csv(csv_path)
+            print(f"Pose data saved to {csv_path}")
 
 def parse_args():
     parser = argparse.ArgumentParser()
