@@ -36,7 +36,7 @@ python main.py --input examples/PD_anterior.mp4 --complexity 1
 
 ## Arguments
 
-- `--input`, `-i`: Path to input video file (required)
+- `--input`, `-i`: Directory to input video file(s) (required)
 - `--output`, `-o`: Directory to save output video (default: `out`)
 - `--complexity`, `-c`: Model complexity (0, 1, or 2; default: 1)
 - `--render`, `-r`: Render the output video with landmarks
