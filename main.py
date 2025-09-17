@@ -8,13 +8,7 @@ import numpy as np
 import pandas as pd
 import mediapipe as mp
 
-LEFT_LANDMARKS = [
-    4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32
-]
-
-RIGHT_LANDMARKS = [
-    1, 2, 3, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
-]
+from utils import LEFT_LANDMARKS, RIGHT_LANDMARKS
 
 def estimate_poses(args):
     mp_pose = mp.solutions.pose
@@ -126,5 +120,4 @@ if __name__ == "__main__":
     estimate_poses(args)
 
     # TODO:
-    # - Plot skeleton using matplotlib
     # - Do feature extraction for PD gait analysis
