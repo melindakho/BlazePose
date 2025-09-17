@@ -17,7 +17,9 @@ RIGHT_LANDMARKS = [
 ]
 
 def estimate_poses(args):
-    mp_pose = mp.solutions.pose.Pose(
+    mp_pose = mp.solutions.pose
+    connections = mp_pose.POSE_CONNECTIONS
+    mp_pose = mp_pose.Pose(
         model_complexity=args.complexity,
         enable_segmentation=False,
     )
@@ -55,23 +57,36 @@ def estimate_poses(args):
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = mp_pose.process(rgb)
 
-
             if results.pose_landmarks:
-                landmarks = []
+                landmarks, landmark_points = [], []
                 for i, point in enumerate(results.pose_landmarks.landmark):
-                    landmarks.extend([point.x, point.y, point.z, point.visibility])
                     x = int(point.x * frame.shape[1])
                     y = int(point.y * frame.shape[0])
-                    if i in LEFT_LANDMARKS:
-                        cv2.circle(frame, (x, y), 3, (0, 0, 255), -1)
-                    elif i in RIGHT_LANDMARKS:
-                        cv2.circle(frame, (x, y), 3, (255, 0, 0), -1)
+                    landmarks.extend([point.x, point.y, point.z, point.visibility])
+                    landmark_points.append((x, y))
+                    
+                for connection in connections:
+                    start_idx, end_idx = connection
+                    if start_idx in LEFT_LANDMARKS and end_idx in LEFT_LANDMARKS:
+                        color = (0, 0, 255)
+                    elif start_idx in RIGHT_LANDMARKS and end_idx in RIGHT_LANDMARKS:
+                        color = (255, 0, 0)
                     else:
-                        cv2.circle(frame, (x, y), 3, (0, 255, 0), -1)
-                
+                        color = (0, 255, 255)
+                    cv2.line(frame, landmark_points[start_idx], landmark_points[end_idx], color, 2)
+
+                for i, point in enumerate(landmark_points):
+                    if i in LEFT_LANDMARKS:
+                        color = (0, 0, 255)
+                    elif i in RIGHT_LANDMARKS:
+                        color = (255, 0, 0)
+                    else:
+                        color = (0, 255, 0)
+                    cv2.circle(frame, point, 3, color, -1)
+
                 # Timestamp in seconds
                 timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-                
+
                 poses.append(landmarks)
                 timestamps.append(timestamp)
 
@@ -109,3 +124,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     estimate_poses(args)
+
+    # TODO:
+    # - Plot skeleton using matplotlib
+    # - Do feature extraction for PD gait analysis
